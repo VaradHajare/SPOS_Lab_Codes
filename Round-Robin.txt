@@ -1,7 +1,7 @@
 import java.util.*;
 
 class MyProcess {
-    int id, arrival, burst, remaining, waiting = 0, turnaround = 0, completion = 0, response = -1;
+    int id, arrival, burst, remaining, waiting = 0, turnaround = 0, completion = 0;
 
     MyProcess(int id, int arrival, int burst) {
         this.id = id;
@@ -49,11 +49,6 @@ public class RoundRobin {
         while (!queue.isEmpty()) {
             MyProcess current = queue.poll();
 
-            // Record first response time
-            if (current.response == -1) {
-                current.response = time - current.arrival;
-            }
-
             // Execute process
             if (current.remaining > quantum) {
                 current.remaining -= quantum;
@@ -93,28 +88,22 @@ public class RoundRobin {
         }
 
         // Calculate averages
-        double totalWaiting = 0, totalTurnaround = 0, totalResponse = 0;
+        double totalWaiting = 0, totalTurnaround = 0;
         for (MyProcess p : processes) {
             totalWaiting += p.waiting;
             totalTurnaround += p.turnaround;
-            totalResponse += p.response;
         }
         double avgWaiting = totalWaiting / n;
         double avgTurnaround = totalTurnaround / n;
-        double avgResponse = totalResponse / n;
 
         // Display results
-        System.out.printf("\n%-10s%-10s%-10s%-13s%-10s%-13s%-10s\n",
-        "Process", "Arrival", "Burst", "Completion", "Waiting", "Turnaround", "Response");
-
+        System.out.println("\nProcess\tArrival\tBurst\tCompletion\tWaiting\tTurnaround");
         for (MyProcess p : processes) {
-            System.out.printf("%-10s%-10d%-10d%-13d%-10d%-13d%-10d\n",
-                    "P" + p.id, p.arrival, p.burst, p.completion, p.waiting, p.turnaround, p.response);
+            System.out.println("P" + p.id + "\t" + p.arrival + "\t" + p.burst + "\t" +
+                    p.completion + "\t\t" + p.waiting + "\t" + p.turnaround);
         }
-
 
         System.out.printf("\nAverage Waiting Time: %.2f\n", avgWaiting);
         System.out.printf("Average Turnaround Time: %.2f\n", avgTurnaround);
-        System.out.printf("Average Response Time: %.2f\n", avgResponse);
     }
 }
