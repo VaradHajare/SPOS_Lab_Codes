@@ -1,0 +1,103 @@
+package CPU_Scheduling;
+
+import java.util.*;
+
+class PriorityProcess {
+    int pid, burstTime, priority, waitingTime, turnaroundTime, arrivalTime, completionTime, startTime;
+    boolean isCompleted;
+
+    public PriorityProcess(int pid, int burstTime, int priority, int arrivalTime) {
+        this.pid = pid;
+        this.burstTime = burstTime;
+        this.priority = priority;
+        this.arrivalTime = arrivalTime;
+        this.isCompleted = false;
+    }
+}
+
+public class PriorityNonPreemptive {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
+        PriorityProcess[] processes = new PriorityProcess[n];
+
+        // Input
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter arrival time, burst time, and priority for process " + (i + 1) + ": ");
+            int at = sc.nextInt();
+            int bt = sc.nextInt();
+            int pr = sc.nextInt();
+            processes[i] = new PriorityProcess(i + 1, bt, pr, at);
+        }
+
+        int completed = 0, currentTime = 0;
+        int totalWT = 0, totalTAT = 0;
+        List<String> gantt = new ArrayList<>();
+
+        while (completed < n) {
+            int idx = -1;
+            int highestPriority = Integer.MAX_VALUE;
+
+            // Select process with highest priority (lower number = higher priority)
+            for (int i = 0; i < n; i++) {
+                if (!processes[i].isCompleted && processes[i].arrivalTime <= currentTime) {
+                    if (processes[i].priority < highestPriority) {
+                        highestPriority = processes[i].priority;
+                        idx = i;
+                    } else if (processes[i].priority == highestPriority) {
+                        // Tie-breaker: earlier arrival
+                        if (idx != -1 && processes[i].arrivalTime < processes[idx].arrivalTime) {
+                            idx = i;
+                        }
+                    }
+                }
+            }
+
+            if (idx == -1) {
+                // CPU idle
+                gantt.add("Idle(" + currentTime + "-" + (currentTime + 1) + ")");
+                currentTime++;
+            } else {
+                PriorityProcess p = processes[idx];
+                p.startTime = currentTime;
+                p.waitingTime = currentTime - p.arrivalTime;
+                currentTime += p.burstTime;
+                p.completionTime = currentTime;
+                p.turnaroundTime = p.completionTime - p.arrivalTime;
+                p.isCompleted = true;
+
+                totalWT += p.waitingTime;
+                totalTAT += p.turnaroundTime;
+                completed++;
+
+                gantt.add("P" + p.pid + "(" + p.startTime + "-" + p.completionTime + ")");
+            }
+        }
+
+        // Print Gantt Chart
+        System.out.println("\nGantt Chart:");
+        for (String g : gantt) {
+            System.out.print(g + " | ");
+        }
+        System.out.println();
+
+        // Table Header
+        System.out.printf("\n%-8s %-7s %-6s %-9s %-11s %-8s %-10s\n",
+                "Process", "Arrival", "Burst", "Priority", "Completion", "Waiting", "Turnaround");
+
+        // Table Values
+        for (PriorityProcess p : processes) {
+            System.out.printf("P%-7d %-7d %-6d %-9d %-11d %-8d %-10d\n",
+                    p.pid, p.arrivalTime, p.burstTime, p.priority,
+                    p.completionTime, p.waitingTime, p.turnaroundTime);
+        }
+
+        // Averages
+        System.out.printf("\nAverage Waiting Time: %.2f\n", (float) totalWT / n);
+        System.out.printf("Average Turnaround Time: %.2f\n", (float) totalTAT / n);
+
+        sc.close();
+    }
+}

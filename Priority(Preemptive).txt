@@ -1,0 +1,116 @@
+package CPU_Scheduling;
+
+import java.util.Scanner;
+
+public class PriorityPreemptive {
+    static class Process {
+        int id, burst, priority, arrival;
+        int waitingTime, turnaroundTime, completionTime, responseTime;
+        int remainingBurst;
+        boolean started;
+
+        public Process(int id, int burst, int priority, int arrival) {
+            this.id = id;
+            this.burst = burst;
+            this.priority = priority;
+            this.arrival = arrival;
+            this.remainingBurst = burst;
+            this.started = false;
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
+        Process[] processes = new Process[n];
+
+        // Input arrival time, burst time, and priority
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter arrival time, burst time, and priority for process " + (i + 1) + ": ");
+            int at = sc.nextInt();
+            int bt = sc.nextInt();
+            int pr = sc.nextInt();
+            processes[i] = new Process(i + 1, bt, pr, at);
+        }
+
+        int completed = 0, time = 0;
+        StringBuilder ganttChart = new StringBuilder();
+
+        while (completed < n) {
+            int idx = -1;
+            int highestPriority = Integer.MAX_VALUE;
+
+            // Select process with highest priority (lowest number)
+            for (int i = 0; i < n; i++) {
+                if (processes[i].arrival <= time && processes[i].remainingBurst > 0) {
+                    if (processes[i].priority < highestPriority) {
+                        highestPriority = processes[i].priority;
+                        idx = i;
+                    } else if (processes[i].priority == highestPriority) {
+                        if (idx == -1 || processes[i].arrival < processes[idx].arrival)
+                            idx = i;
+                    }
+                }
+            }
+
+            if (idx != -1) {
+                // Mark response time when process starts for the first time
+                if (!processes[idx].started) {
+                    processes[idx].responseTime = time - processes[idx].arrival;
+                    processes[idx].started = true;
+                }
+
+                processes[idx].remainingBurst--;
+                ganttChart.append("P").append(processes[idx].id).append(" ");
+                if (processes[idx].remainingBurst == 0) {
+                    completed++;
+                    processes[idx].completionTime = time + 1;
+                    processes[idx].turnaroundTime = processes[idx].completionTime - processes[idx].arrival;
+                    processes[idx].waitingTime = processes[idx].turnaroundTime - processes[idx].burst;
+                }
+            } else {
+                ganttChart.append("idle ");
+            }
+            time++;
+        }
+
+        // Compress Gantt chart
+        String[] tokens = ganttChart.toString().trim().split(" ");
+        StringBuilder gantt = new StringBuilder();
+        String prev = tokens[0];
+        int start = 0;
+        for (int i = 1; i < tokens.length; i++) {
+            if (!tokens[i].equals(prev)) {
+                gantt.append(prev).append("[").append(start).append("-").append(i).append("] ");
+                prev = tokens[i];
+                start = i;
+            }
+        }
+        gantt.append(prev).append("[").append(start).append("-").append(tokens.length).append("]");
+
+        // Print Gantt Chart
+        System.out.println("\nGantt Chart: " + gantt);
+
+        // Print formatted table
+        System.out.println("\n+---------+-------------+------------+-----------------+------------------+--------------+----------------+");
+        System.out.println("| Process | Arrival Time | Burst Time | Completion Time | Turnaround Time | Waiting Time | Response Time  |");
+
+        int totalWT = 0, totalTAT = 0, totalRT = 0;
+        for (Process p : processes) {
+            totalWT += p.waitingTime;
+            totalTAT += p.turnaroundTime;
+            totalRT += p.responseTime;
+            System.out.printf("| %-7s | %-11d | %-10d | %-15d | %-16d | %-12d | %-14d |\n",
+                    "P" + p.id, p.arrival, p.burst, p.completionTime, p.turnaroundTime, p.waitingTime, p.responseTime);
+        }
+
+        System.out.println("+---------+-------------+------------+-----------------+------------------+--------------+----------------+");
+
+        System.out.printf("\nAverage Turnaround Time = %.2f\n", (float) totalTAT / n);
+        System.out.printf("Average Waiting Time = %.2f\n", (float) totalWT / n);
+        System.out.printf("Average Response Time = %.2f\n", (float) totalRT / n);
+
+        sc.close();
+    }
+}

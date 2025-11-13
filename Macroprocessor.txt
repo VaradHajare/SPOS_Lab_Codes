@@ -1,0 +1,183 @@
+package Macroprocessor;
+import java.io.*;
+import java.util.*;
+
+// This is the main class for the macro processor
+public class MacroProcessor {
+
+    // --- START: Nested Helper Class ---
+    // This class was missing. It defines the structure for the MNT.
+    static class MacroNameTable {
+        String name;
+        int index;      // Starting index in the MDT
+        int parameters; // Number of parameters
+
+        public MacroNameTable(String name, int index, int parameters) {
+            this.name = name;
+            this.index = index;
+            this.parameters = parameters;
+        }
+    }
+    // --- END: Nested Helper Class ---
+
+    // Macro Definition Table (MDT)
+    String[] MDT = new String[30];
+    int MDTP = 0; // Macro Definition Table Pointer
+
+    // Macro Name Table (MNT)
+    List<MacroNameTable> MNT = new ArrayList<>();
+
+    // Argument List Array (ALA) for Pass 2
+    Map<String, String> ALA = new HashMap<>();
+
+  
+    private void pass1() throws Exception {
+        BufferedReader br = new BufferedReader(new FileReader("C:\\Users\\HP\\eclipse-workspace\\Macro\\src\\Macroprocessor\\input.txt"));
+        BufferedWriter intermediateWriter = new BufferedWriter(new FileWriter("intermediate.txt"));
+
+        boolean insideMacro = false;
+        String line;
+
+        while ((line = br.readLine()) != null) {
+            line = line.trim();
+            String[] parts = line.split("[\\s,]+"); // Split on spaces or commas
+
+            if (parts[0].equalsIgnoreCase("MACRO")) {
+                insideMacro = true;
+                line = br.readLine().trim(); // Read the macro definition line
+                String[] defParts = line.split("[\\s,]+"); // Split the definition line
+
+                // Create and add MNT entry
+                // The parameters are the tokens after the name (e.g., &A, &B)
+                MNT.add(new MacroNameTable(defParts[0], MDTP, defParts.length - 1));
+
+                // Add macro definition line to MDT and prepare parameters for MDT
+                String mdtLine = defParts[0]; // Start with macro name
+                ALA.clear(); // Clear argument list for this new macro
+                for (int i = 1; i < defParts.length; i++) {
+                    // Store formal param (e.g., &A) with its positional index (e.g., #1)
+                    ALA.put(defParts[i], "#" + i); 
+                    mdtLine += "\t" + defParts[i]; // Add param to MDT line
+                }
+                MDT[MDTP++] = mdtLine; // Add the full definition line
+
+            } else if (parts[0].equalsIgnoreCase("MEND")) {
+                MDT[MDTP++] = line; // Add MEND to MDT
+                insideMacro = false;
+                ALA.clear(); // Clear ALA after macro definition ends
+
+            } else if (insideMacro) {
+                // This is a line inside a macro definition
+                // Replace formal parameters (e.g., &A) with positional markers (e.g., #1)
+                String processedLine = line;
+                for (Map.Entry<String, String> entry : ALA.entrySet()) {
+                    processedLine = processedLine.replaceAll(entry.getKey(), entry.getValue());
+                }
+                MDT[MDTP++] = processedLine; // Add the processed line to MDT
+
+            } else {
+                // This is regular code, write to intermediate file
+                intermediateWriter.write(line);
+                intermediateWriter.newLine();
+            }
+        }
+
+        br.close();
+        intermediateWriter.close();
+
+        // --- Print the tables ---
+        System.out.println("--- Macro Name Table (MNT) ---");
+        System.out.println("Index  Name   Params  MDT_Index");
+        for (int i = 0; i < MNT.size(); i++) {
+            MacroNameTable entry = MNT.get(i);
+            System.out.println(i + "      " + entry.name + "   " + entry.parameters + "       " + entry.index);
+        }
+        System.out.println();
+
+        System.out.println("--- Macro Definition Table (MDT) ---");
+        for (int i = 0; i < MDTP; i++) {
+            System.out.println(i + ": " + MDT[i]);
+        }
+    }
+
+    /**
+     * Pass 2:
+     * - Reads the intermediate file.
+     * - When a macro call is found:
+     * - Binds actual parameters (e.g., A, B) to positional markers (e.g., #1, #2).
+     * - Expands the macro by reading from the MDT.
+     * - Replaces positional markers with actual parameters.
+     * - Writes all expanded code and regular code to the final output file.
+     */
+    private void pass2() throws Exception {
+        BufferedReader br = new BufferedReader(new FileReader("intermediate.txt"));
+        BufferedWriter bw = new BufferedWriter(new FileWriter("output.txt"));
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            line = line.trim();
+            if (line.isEmpty()) {
+                bw.newLine();
+                continue;
+            }
+
+            String[] parts = line.split("[\\s,]+"); // Split on spaces or commas
+            boolean macroFound = false;
+
+            for (MacroNameTable mntEntry : MNT) {
+                // Check if the first token is a macro name
+                if (parts[0].equalsIgnoreCase(mntEntry.name)) {
+                    macroFound = true;
+                    int mdtIndex = mntEntry.index; // Get base index from MNT
+                    
+                    // The first line in MDT is the definition, so skip it
+                    mdtIndex++; 
+
+                    // --- Build the Argument List for this call ---
+                    ALA.clear();
+                    // parts[1] is the first actual parameter, maps to #1
+                    // parts[2] is the second actual parameter, maps to #2, etc.
+                    for (int i = 1; i < parts.length; i++) {
+                        ALA.put("#" + i, parts[i]);
+                    }
+
+                    // --- Expand the macro ---
+                    while (MDT[mdtIndex] != null && !MDT[mdtIndex].equalsIgnoreCase("MEND")) {
+                        String expandedLine = MDT[mdtIndex];
+                        
+                        // Replace all positional markers (e.g., #1) with actual params (e.g., A)
+                        for (Map.Entry<String, String> entry : ALA.entrySet()) {
+                            expandedLine = expandedLine.replaceAll(entry.getKey(), entry.getValue());
+                        }
+                        
+                        bw.write(expandedLine);
+                        bw.newLine();
+                        mdtIndex++;
+                    }
+                    break; // Stop searching MNT
+                }
+            }
+
+            if (!macroFound) {
+                // Not a macro call, just regular code
+                bw.write(line);
+                bw.newLine();
+            }
+        }
+
+        br.close();
+        bw.close();
+    }
+
+    public static void main(String[] args) throws Exception {
+        MacroProcessor mp = new MacroProcessor();
+
+        System.out.println("Starting Pass 1...");
+        mp.pass1();
+        System.out.println("Pass 1 completed.\n");
+
+        System.out.println("Starting Pass 2...");
+        mp.pass2();
+        System.out.println("Pass 2 completed. Output generated in output.txt");
+    }
+}

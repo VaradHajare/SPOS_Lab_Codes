@@ -1,0 +1,107 @@
+package Page_Replacement;
+
+import java.util.*;
+
+public class LRU {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter the number of frames: ");
+        int numberOfFrames = scanner.nextInt();
+
+        System.out.print("Enter the number of pages: ");
+        int numberOfPages = scanner.nextInt();
+
+        System.out.print("Enter the page reference string (space-separated): ");
+        int[] pageReferenceString = new int[numberOfPages];
+        for (int i = 0; i < numberOfPages; i++) {
+            pageReferenceString[i] = scanner.nextInt();
+        }
+
+        int[] frames = new int[numberOfFrames];
+        Arrays.fill(frames, -1);
+        Map<Integer, Integer> lastUsed = new HashMap<>();
+
+        int pageFaults = 0, pageHits = 0;
+
+        System.out.println("\nLRU Page Replacement\n");
+        System.out.printf("%-10s %-10s %-10s %-20s%n", "Step", "Page", "Status", "Frames");
+        System.out.println("-------------------------------------------------------");
+
+        for (int i = 0; i < numberOfPages; i++) {
+            int page = pageReferenceString[i];
+            boolean hit = false;
+
+            // Check if page exists
+            for (int f = 0; f < numberOfFrames; f++) {
+                if (frames[f] == page) {
+                    hit = true;
+                    pageHits++;
+                    break;
+                }
+            }
+
+            if (!hit) {
+                pageFaults++;
+
+                // Find empty frame
+                boolean placed = false;
+                for (int f = 0; f < numberOfFrames; f++) {
+                    if (frames[f] == -1) {
+                        frames[f] = page;
+                        placed = true;
+                        break;
+                    }
+                }
+
+                // If no empty frame, replace least recently used
+                if (!placed) {
+                    int lruPage = findLRU(frames, lastUsed);
+                    for (int f = 0; f < numberOfFrames; f++) {
+                        if (frames[f] == lruPage) {
+                            frames[f] = page;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Update last used time
+            lastUsed.put(page, i);
+
+            // Print state
+            System.out.printf("%-10d %-10d %-10s ", (i + 1), page, (hit ? "Hit" : "Fault"));
+            for (int f = 0; f < numberOfFrames; f++) {
+                if (frames[f] == -1) System.out.print("- ");
+                else System.out.print(frames[f] + " ");
+            }
+            System.out.println();
+        }
+
+        double faultRatio = (pageFaults * 100.0) / numberOfPages;
+        double hitRatio = (pageHits * 100.0) / numberOfPages;
+
+        System.out.println("\n-------------------------------------------------------");
+        System.out.println("Total Page Faults : " + pageFaults);
+        System.out.println("Total Page Hits   : " + pageHits);
+        System.out.printf("Page Fault Ratio  : %.2f%%\n", faultRatio);
+        System.out.printf("Page Hit Ratio    : %.2f%%\n", hitRatio);
+        scanner.close();
+    }
+
+    // Function to find least recently used page
+    private static int findLRU(int[] frames, Map<Integer, Integer> lastUsed) {
+        int lruPage = -1;
+        int min = Integer.MAX_VALUE;
+
+        for (int page : frames) {
+            if (page == -1) continue;
+            int usedTime = lastUsed.getOrDefault(page, -1);
+            if (usedTime < min) {
+                min = usedTime;
+                lruPage = page;
+            }
+        }
+        return lruPage;
+    }
+}

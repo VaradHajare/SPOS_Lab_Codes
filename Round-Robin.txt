@@ -1,0 +1,120 @@
+import java.util.*;
+
+class MyProcess {
+    int id, arrival, burst, remaining, waiting = 0, turnaround = 0, completion = 0, response = -1;
+
+    MyProcess(int id, int arrival, int burst) {
+        this.id = id;
+        this.arrival = arrival;
+        this.burst = burst;
+        this.remaining = burst;
+    }
+}
+
+public class RoundRobin {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Input number of processes and time quantum
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
+        MyProcess[] processes = new MyProcess[n];
+
+        System.out.print("Enter time quantum: ");
+        int quantum = sc.nextInt();
+
+        // Input arrival and burst times
+        for (int i = 0; i < n; i++) {
+            System.out.print("\nEnter arrival time for process " + (i + 1) + ": ");
+            int arrival = sc.nextInt();
+            System.out.print("Enter burst time for process " + (i + 1) + ": ");
+            int burst = sc.nextInt();
+            processes[i] = new MyProcess(i + 1, arrival, burst);
+        }
+
+        // Sort by arrival time
+        Arrays.sort(processes, Comparator.comparingInt(p -> p.arrival));
+
+        int time = 0;
+        Queue<MyProcess> queue = new LinkedList<>();
+        int completed = 0;
+        boolean[] visited = new boolean[n];
+
+        // Start with first process
+        queue.add(processes[0]);
+        visited[0] = true;
+        time = processes[0].arrival;
+
+        // Main Round Robin loop
+        while (!queue.isEmpty()) {
+            MyProcess current = queue.poll();
+
+            // Record first response time
+            if (current.response == -1) {
+                current.response = time - current.arrival;
+            }
+
+            // Execute process
+            if (current.remaining > quantum) {
+                current.remaining -= quantum;
+                time += quantum;
+            } else {
+                time += current.remaining;
+                current.remaining = 0;
+                current.completion = time;
+                current.turnaround = current.completion - current.arrival;
+                current.waiting = current.turnaround - current.burst;
+                completed++;
+            }
+
+            // Add new arrivals
+            for (int i = 0; i < n; i++) {
+                MyProcess p = processes[i];
+                if (!visited[i] && p.arrival <= time && p.remaining > 0) {
+                    queue.add(p);
+                    visited[i] = true;
+                }
+            }
+
+            // Re-add current process if it's not finished
+            if (current.remaining > 0) {
+                queue.add(current);
+            } else if (queue.isEmpty()) {
+                // Find the next arriving process if queue empty
+                for (int i = 0; i < n; i++) {
+                    if (processes[i].remaining > 0) {
+                        queue.add(processes[i]);
+                        visited[i] = true;
+                        time = Math.max(time, processes[i].arrival);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Calculate averages
+        double totalWaiting = 0, totalTurnaround = 0, totalResponse = 0;
+        for (MyProcess p : processes) {
+            totalWaiting += p.waiting;
+            totalTurnaround += p.turnaround;
+            totalResponse += p.response;
+        }
+        double avgWaiting = totalWaiting / n;
+        double avgTurnaround = totalTurnaround / n;
+        double avgResponse = totalResponse / n;
+
+        // Display results
+        System.out.printf("\n%-10s%-10s%-10s%-13s%-10s%-13s%-10s\n",
+        "Process", "Arrival", "Burst", "Completion", "Waiting", "Turnaround", "Response");
+
+        for (MyProcess p : processes) {
+            System.out.printf("%-10s%-10d%-10d%-13d%-10d%-13d%-10d\n",
+                    "P" + p.id, p.arrival, p.burst, p.completion, p.waiting, p.turnaround, p.response);
+        }
+
+
+        System.out.printf("\nAverage Waiting Time: %.2f\n", avgWaiting);
+        System.out.printf("Average Turnaround Time: %.2f\n", avgTurnaround);
+        System.out.printf("Average Response Time: %.2f\n", avgResponse);
+    }
+}

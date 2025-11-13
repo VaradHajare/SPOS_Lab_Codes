@@ -1,0 +1,70 @@
+import java.io.*;
+import java.util.*;
+
+public class pass2 {
+    public static void main(String[] args) throws IOException {
+
+        Map<Integer, String[]> symtab = new HashMap<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("symbol.txt"))) {
+            String line; int i = 1;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(" ");
+                symtab.put(i++, parts);
+            }
+        }
+
+        List<String[]> ic = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("intermediate.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                ic.add(line.trim().split(" "));
+            }
+        }
+
+        System.out.println("------------------------------");
+        System.out.println("        PASS-II OUTPUT");
+        System.out.println("------------------------------");
+        System.out.println("LC\tMACHINE CODE");
+        System.out.println("------------------------------");
+
+        int lc = 100; // From START
+
+        for (String[] parts : ic) {
+            String op = parts[0];
+
+            if (op.contains("(AD,01)")) { // START
+                String c = parts[1].replace("(C,", "").replace(")", "");
+                lc = Integer.parseInt(c);
+                continue;
+            }
+            if (op.contains("(AD,02)")) break; // END
+
+            if (op.contains("(DL")) {
+                String val = parts[1].replace("(C,", "").replace(")", "");
+                System.out.println(lc + "\t00 0 " + val);
+                lc++;
+                continue;
+            }
+
+            if (op.contains("(IS")) {
+                String opcode = op.replace("(IS,", "").replace(")", "");
+                String reg = "0", addr = "000";
+
+                if (parts.length > 1 && parts[1].startsWith("("))
+                    reg = parts[1].replace("(", "").replace(")", "");
+
+                if (parts.length > 2 && parts[2].startsWith("(S,")) {
+                    int idx = Integer.parseInt(parts[2].replace("(S,", "").replace(")", ""));
+                    addr = symtab.get(idx)[1];
+                }
+
+                System.out.println(lc + "\t" + opcode + " " + reg + " " + addr);
+                lc++;
+            }
+        }
+
+        System.out.println("------------------------------");
+        System.out.println("       PASS-II COMPLETED");
+        System.out.println("------------------------------");
+    }
+}

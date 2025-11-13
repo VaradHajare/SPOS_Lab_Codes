@@ -1,0 +1,92 @@
+package CPU_Scheduling;
+
+import java.util.Scanner;
+
+class SJFNProcess {
+    int pid, burstTime, arrivalTime;
+    int waitingTime, turnaroundTime, completionTime;
+    boolean isCompleted;
+
+    public SJFNProcess(int pid, int burstTime, int arrivalTime) {
+        this.pid = pid;
+        this.burstTime = burstTime;
+        this.arrivalTime = arrivalTime;
+        this.isCompleted = false;
+    }
+}
+
+public class SJFNonPreemptive {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
+        SJFNProcess[] processes = new SJFNProcess[n];
+
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter arrival time and burst time for Process " + (i + 1) + ": ");
+            int at = sc.nextInt();
+            int bt = sc.nextInt();
+            processes[i] = new SJFNProcess(i + 1, bt, at);
+        }
+
+        int currentTime = 0;
+        int completed = 0;
+        float totalWT = 0, totalTAT = 0;
+        StringBuilder gantt = new StringBuilder("\nGantt Chart:\n");
+
+        while (completed < n) {
+            int idx = -1;
+            int minBT = Integer.MAX_VALUE;
+
+            // Find process with smallest burst time among those arrived
+            for (int i = 0; i < n; i++) {
+                if (!processes[i].isCompleted && processes[i].arrivalTime <= currentTime) {
+                    if (processes[i].burstTime < minBT) {
+                        minBT = processes[i].burstTime;
+                        idx = i;
+                    }
+                }
+            }
+
+            if (idx != -1) {
+                SJFNProcess p = processes[idx];
+
+                // Update process timings
+                int startTime = currentTime;
+                p.waitingTime = startTime - p.arrivalTime;
+                currentTime += p.burstTime;
+                p.completionTime = currentTime;
+                p.turnaroundTime = p.completionTime - p.arrivalTime;
+                p.isCompleted = true;
+
+                // Update totals
+                totalWT += p.waitingTime;
+                totalTAT += p.turnaroundTime;
+                completed++;
+
+                // Add to Gantt chart
+                gantt.append("P").append(p.pid)
+                     .append("(").append(startTime)
+                     .append("–").append(currentTime)
+                     .append(") ");
+            } else {
+                currentTime++; // If no process arrived yet
+            }
+        }
+
+        // Print results
+        System.out.println(gantt.toString());
+
+        System.out.println("\nProcess\tArrival\tBurst\tCompletion\tTurnaround\tWaiting");
+        for (SJFNProcess p : processes) {
+            System.out.println("P" + p.pid + "\t" + p.arrivalTime + "\t" + p.burstTime + "\t" +
+                    p.completionTime + "\t\t" + p.turnaroundTime + "\t\t" + p.waitingTime);
+        }
+
+        System.out.printf("\nAverage Turnaround Time: %.2f\n", totalTAT / n);
+        System.out.printf("Average Waiting Time: %.2f\n", totalWT / n);
+
+        sc.close();
+    }
+}
